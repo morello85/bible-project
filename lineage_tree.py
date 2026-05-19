@@ -23,7 +23,10 @@ FEMALE_GROUPS = {"matriarch", "queen"}
 
 # ── tree construction ──────────────────────────────────────────────────
 def build_descendants(root, depth, characters, relationships):
-    """BFS down `parent` edges from root, capped at `depth` generations.
+    """Walk `parent` edges from root, assigning each descendant the
+    longest-path generation. This avoids shortcut-edges (e.g. a parent
+    who is also a niece of the root) collapsing later generations onto
+    earlier rows.
 
     Returns {"root": name, "nodes": {name: {gen, children, spouses}}} or None.
     """
@@ -44,22 +47,60 @@ def build_descendants(root, depth, characters, relationships):
             if s not in spouses_of[t]:
                 spouses_of[t].append(s)
 
-    nodes = {}
-    queue = [(root, 0)]
-    while queue:
-        name, gen = queue.pop(0)
-        if name in nodes or gen > depth:
+    # Phase 1: gather descendants reachable from root
+    reachable = set()
+    stack = [root]
+    while stack:
+        n = stack.pop()
+        if n in reachable:
             continue
-        nodes[name] = {"gen": gen, "children": [], "spouses": []}
-        if gen < depth:
-            for child in children_of[name]:
-                if child not in nodes:
-                    queue.append((child, gen + 1))
+        reachable.add(n)
+        for c in children_of[n]:
+            if c not in reachable:
+                stack.append(c)
 
-    for name, info in nodes.items():
-        info["children"] = [c for c in children_of[name] if c in nodes]
-        info["spouses"] = [
-            sp for sp in spouses_of[name]
+    # Phase 2: longest-path generation via Kahn's topological order
+    in_degree = {n: 0 for n in reachable}
+    for n in reachable:
+        for c in children_of[n]:
+            if c in reachable:
+                in_degree[c] += 1
+
+    topo = []
+    queue = [n for n in reachable if in_degree[n] == 0]
+    while queue:
+        n = queue.pop(0)
+        topo.append(n)
+        for c in children_of[n]:
+            if c in reachable:
+                in_degree[c] -= 1
+                if in_degree[c] == 0:
+                    queue.append(c)
+
+    gen = {root: 0}
+    for n in topo:
+        if n not in gen:
+            continue
+        for c in children_of[n]:
+            if c in reachable:
+                cand = gen[n] + 1
+                if c not in gen or gen[c] < cand:
+                    gen[c] = cand
+
+    # Phase 3: apply depth filter; only keep parent-child edges that
+    # span exactly one generation in the longest-path numbering
+    nodes = {
+        n: {"gen": g, "children": [], "spouses": []}
+        for n, g in gen.items()
+        if g <= depth
+    }
+    for n in nodes:
+        nodes[n]["children"] = [
+            c for c in children_of[n]
+            if c in nodes and nodes[c]["gen"] == nodes[n]["gen"] + 1
+        ]
+        nodes[n]["spouses"] = [
+            sp for sp in spouses_of[n]
             if sp in characters and sp not in nodes
         ]
 
