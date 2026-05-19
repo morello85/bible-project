@@ -278,14 +278,116 @@ def render_html(tree, characters, height_cap=900):
 
     svg = (
         f'<svg xmlns="http://www.w3.org/2000/svg" width="{svg_w}" height="{svg_h}" '
-        f'viewBox="0 0 {svg_w} {svg_h}" style="display:block;background:#1a1a2e;">'
+        f'viewBox="0 0 {svg_w} {svg_h}" style="display:block;background:#1a1a2e;'
+        f'transform-origin:0 0;">'
         + "".join(elements)
         + "</svg>"
     )
 
-    container_h = min(svg_h + 4, height_cap)
-    html = (
-        f'<div style="background:#1a1a2e;border:1px solid #2d2d44;border-radius:10px;'
-        f'overflow:auto;max-height:{height_cap}px;width:100%;">{svg}</div>'
-    )
+    container_h = height_cap
+    html = f"""
+<style>
+  .lin-root {{ position: relative; width: 100%; height: {container_h}px;
+              background: #1a1a2e; border: 1px solid #2d2d44; border-radius: 10px; overflow: hidden; }}
+  .lin-toolbar {{ position: absolute; top: 10px; right: 14px; z-index: 10;
+                 display: flex; gap: 4px; align-items: center;
+                 background: rgba(45, 45, 68, 0.92); border: 1px solid #444;
+                 border-radius: 6px; padding: 4px 6px;
+                 font-family: ui-sans-serif, system-ui, sans-serif; }}
+  .lin-btn {{ background: rgba(80, 80, 120, 0.8); color: #fff; border: 1px solid #555;
+             border-radius: 4px; width: 28px; height: 28px; cursor: pointer;
+             font-size: 14px; line-height: 1; padding: 0; }}
+  .lin-btn:hover {{ background: rgba(110, 110, 160, 0.9); }}
+  .lin-zoom-label {{ color: #ccc; font-size: 11px; min-width: 38px; text-align: center;
+                    padding: 0 4px; user-select: none; }}
+  .lin-scroll {{ width: 100%; height: 100%; overflow: auto; cursor: grab; }}
+  .lin-scroll.dragging {{ cursor: grabbing; }}
+  .lin-scroll::-webkit-scrollbar {{ width: 10px; height: 10px; }}
+  .lin-scroll::-webkit-scrollbar-track {{ background: #1a1a2e; }}
+  .lin-scroll::-webkit-scrollbar-thumb {{ background: #444; border-radius: 5px; }}
+  .lin-scroll::-webkit-scrollbar-thumb:hover {{ background: #666; }}
+  .lin-inner {{ width: {svg_w}px; height: {svg_h}px; }}
+</style>
+<div class="lin-root" id="lin-root">
+  <div class="lin-toolbar">
+    <button class="lin-btn" id="lin-out" title="Zoom out">&minus;</button>
+    <span class="lin-zoom-label" id="lin-pct">100%</span>
+    <button class="lin-btn" id="lin-in" title="Zoom in">&plus;</button>
+    <button class="lin-btn" id="lin-fit" title="Fit to width">&#x2922;</button>
+    <button class="lin-btn" id="lin-reset" title="Reset to 100%">&#x21BB;</button>
+  </div>
+  <div class="lin-scroll" id="lin-scroll">
+    <div class="lin-inner" id="lin-inner">{svg}</div>
+  </div>
+</div>
+<script>
+(function() {{
+  const BASE_W = {svg_w}, BASE_H = {svg_h};
+  const MIN = 0.15, MAX = 4;
+  const root = document.getElementById('lin-root');
+  const scroll = document.getElementById('lin-scroll');
+  const inner = document.getElementById('lin-inner');
+  const svg = inner.querySelector('svg');
+  const pct = document.getElementById('lin-pct');
+  let scale = 1;
+
+  function apply(s, cx, cy) {{
+    s = Math.max(MIN, Math.min(MAX, s));
+    const r = scroll.getBoundingClientRect();
+    const fx = (cx != null ? cx - r.left : r.width / 2);
+    const fy = (cy != null ? cy - r.top  : r.height / 2);
+    const bx = scroll.scrollLeft + fx;
+    const by = scroll.scrollTop  + fy;
+    const ratio = s / scale;
+    scale = s;
+    inner.style.width  = (BASE_W * s) + 'px';
+    inner.style.height = (BASE_H * s) + 'px';
+    svg.style.transform = 'scale(' + s + ')';
+    scroll.scrollLeft = bx * ratio - fx;
+    scroll.scrollTop  = by * ratio - fy;
+    pct.textContent = Math.round(s * 100) + '%';
+  }}
+
+  function fit() {{
+    const s = Math.min(1, scroll.clientWidth / BASE_W, scroll.clientHeight / BASE_H);
+    apply(s);
+    scroll.scrollLeft = 0; scroll.scrollTop = 0;
+  }}
+
+  document.getElementById('lin-in').onclick    = () => apply(scale * 1.2);
+  document.getElementById('lin-out').onclick   = () => apply(scale / 1.2);
+  document.getElementById('lin-fit').onclick   = fit;
+  document.getElementById('lin-reset').onclick = () => {{
+    apply(1); scroll.scrollLeft = 0; scroll.scrollTop = 0;
+  }};
+
+  scroll.addEventListener('wheel', (e) => {{
+    e.preventDefault();
+    const factor = e.deltaY < 0 ? 1.12 : 1/1.12;
+    apply(scale * factor, e.clientX, e.clientY);
+  }}, {{ passive: false }});
+
+  let drag = false, sx0, sy0, slx, sly;
+  scroll.addEventListener('mousedown', (e) => {{
+    if (e.target.closest('.lin-toolbar')) return;
+    drag = true; sx0 = e.clientX; sy0 = e.clientY;
+    slx = scroll.scrollLeft; sly = scroll.scrollTop;
+    scroll.classList.add('dragging');
+    e.preventDefault();
+  }});
+  window.addEventListener('mousemove', (e) => {{
+    if (!drag) return;
+    scroll.scrollLeft = slx - (e.clientX - sx0);
+    scroll.scrollTop  = sly - (e.clientY - sy0);
+  }});
+  window.addEventListener('mouseup', () => {{
+    drag = false; scroll.classList.remove('dragging');
+  }});
+
+  if (BASE_W > scroll.clientWidth) {{
+    setTimeout(fit, 30);
+  }}
+}})();
+</script>
+"""
     return html, container_h

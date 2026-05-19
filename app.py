@@ -288,7 +288,8 @@ if tree_view == "Lineage view (classic boxed tree)":
             st.caption(
                 f"{len(tree['nodes'])} descendants of **{root_name}** "
                 f"across {max(n['gen'] for n in tree['nodes'].values()) + 1} generations · "
-                "scroll inside the panel to pan"
+                "**scroll wheel** to zoom · **click & drag** to pan · "
+                "toolbar: − / + / fit-to-width / reset"
             )
 
   # ──────────────────────────────────────────────────────────────────
