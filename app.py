@@ -221,15 +221,19 @@ if tree_view == "Lineage view (classic boxed tree)":
     with tab_tree:
         LINEAGE_PRESETS = {
             "Adam → Noah (Primeval)": ("Adam", 10),
+            "Adam → Jesus (full)": ("Adam", 65),
+            "Noah → his sons (Table of Nations)": ("Noah", 2),
+            "Shem → Abraham (Gen 11)": ("Shem", 10),
             "Abraham → Jacob (Patriarchs)": ("Abraham", 3),
-            "Abraham → David": ("Abraham", 14),
+            "Abraham → Jesus (Matt 1)": ("Abraham", 45),
             "Jacob & his 12 sons": ("Jacob", 1),
+            "Esau → Edomite chiefs": ("Esau", 3),
             "Judah → David": ("Judah", 10),
+            "Levi → Moses, Aaron & Korah": ("Levi", 5),
             "David → Solomon → Rehoboam": ("David", 3),
             "Kings of Judah (Solomon onward)": ("Solomon", 20),
             "Kings of Israel (Northern)": ("Jeroboam I", 8),
-            "Noah → his sons": ("Noah", 2),
-            "Levi → Moses & Aaron": ("Levi", 5),
+            "Jeconiah → Joseph of Nazareth (Matt 1:12-16)": ("Jehoiachin", 14),
             "Herod the Great": ("Herod the Great", 3),
         }
 
@@ -249,7 +253,7 @@ if tree_view == "Lineage view (classic boxed tree)":
             root_name, depth = LINEAGE_PRESETS[preset_name]
             with depth_col:
                 depth = st.slider(
-                    "Generations", 1, 25, depth, key="lineage_preset_depth"
+                    "Generations", 1, 70, depth, key="lineage_preset_depth"
                 )
         else:
             ancestor_choices = all_ancestors_with_descendants(CHARACTERS, RELATIONSHIPS)
@@ -265,7 +269,7 @@ if tree_view == "Lineage view (classic boxed tree)":
                 )
             with depth_col:
                 depth = st.slider(
-                    "Generations deep", 1, 15, 4, key="lineage_depth"
+                    "Generations deep", 1, 70, 4, key="lineage_depth"
                 )
 
         height_cap = st.slider(
